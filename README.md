@@ -5,12 +5,14 @@ A FastAPI server that generates PR descriptions using Google's Gemini AI model b
 ## Features
 
 - Automatically generates PR descriptions from git commits
-- Supports both detailed and concise descriptions
 - Handles rate limiting with automatic retries
 - Works with any git repository
-- Supports Jira ticket integration
+- Supports Jira ticket integration with consistent formatting
 - Automatically detects and removes common prefixes from commit messages
 - Shows only commits that haven't been merged to upstream yet
+- Formats changes as a bulleted list for better readability
+- Supports custom PR templates with automatic integration
+- Ensures Jira ticket appears exactly once in the correct format
 
 ## Prerequisites
 
@@ -71,9 +73,6 @@ The client script can be used to generate PR descriptions from any git repositor
 # Basic usage - shows all unmerged commits
 python client.py <repository_path>
 
-# Generate a concise description
-python client.py <repository_path> --short
-
 # Specify number of commits to include
 python client.py <repository_path> JIRA-123 3
 
@@ -90,13 +89,12 @@ python client.py <repository_path> --output-file pr_description.md
 python client.py <repository_path> --server-host 192.168.1.100 --server-port 8080
 
 # Combine options
-python client.py <repository_path> JIRA-123 3 --short --remote origin --output-file pr_description.md
+python client.py <repository_path> JIRA-123 3 --remote origin --output-file pr_description.md
 ```
 
 ### Options
 
 - `<repository_path>`: Path to your git repository (required)
-- `--short`: Generate a concise description
 - `<jira_ticket>`: Jira ticket number to include in the description
 - `<number>`: Number of commits to include (optional, defaults to all unmerged commits)
 - `--remote`: Git remote to use for comparison (default: origin)
@@ -105,9 +103,7 @@ python client.py <repository_path> JIRA-123 3 --short --remote origin --output-f
 - `--server-port`: MPC server port (default: 8000)
 - `--output-file`: Output file path to write the PR description (optional)
 
-## Example Output
-
-### Short Description
+### Example Output
 ```
 PR Description:
 ==================================================
@@ -115,6 +111,8 @@ Title: Dashboard-E2E Improvements and ODH Operator Enhancements (JIRA-123)
 
 Full Description:
 # Dashboard-E2E Improvements and ODH Operator Enhancements (JIRA-123)
+
+Jira ticket: JIRA-123
 
 **Changes:**
 
@@ -128,6 +126,25 @@ Full Description:
 
 1. Verify successful deployment of the ODH operator with the retry mechanism.
 2. Run Dashboard-E2E tests to ensure functionality with the updated cluster names and image registry configuration.
+
+Request review criteria:
+- [ ] Code follows project style guidelines
+- [ ] Tests have been added/updated
+- [ ] Documentation has been updated
+
+Self checklist:
+- [ ] All tests pass
+- [ ] Code has been linted
+- [ ] No sensitive data in commits
+
+If you have UI changes:
+- [ ] Screenshots attached
+- [ ] Mobile responsive design verified
+
+After the PR is posted & before it merges:
+- [ ] CI/CD pipeline passes
+- [ ] Required approvals received
+- [ ] Conflicts resolved
 ```
 
 ## Features in Detail
@@ -157,3 +174,15 @@ Feel free to submit issues and enhancement requests!
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+### PR Template Integration
+
+The tool supports custom PR templates that can be automatically integrated into the generated description. To use a custom template:
+
+1. Create a template file with your desired sections
+2. Use the `--template` option when running the client:
+```bash
+python client.py <repository_path> --template path/to/template.md
+```
+
+The template will be automatically appended to the generated description if its sections are not already present.

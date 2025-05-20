@@ -19,15 +19,16 @@
 <!--- This PR will be merged by any repository approver when it meets all the points in the checklist -->
 <!--- Go over all the following points, and put an `x` in all the boxes that apply. -->
 
-Self checklist (all need to be checked):
-- [ ] The developer has manually tested the changes and verified that the changes work
-- [ ] Testing instructions have been added in the PR body (for PRs involving changes that are not immediately obvious).
-- [ ] The developer has added tests or explained why testing cannot be added (unit or cypress tests for related changes)
-
-If you have UI changes:
-<!--- You can ignore these if you are doing manifest, backend, internal logic, etc changes; aka non-UI / visual changes -->
-- [ ] Included any necessary screenshots or gifs if it was a UI change.
-- [ ] Included tags to the UX team if it was a UI/UX change.
+Request review criteria:
+- [ ] Code follows project style guidelines
+- [ ] Tests have been added/updated
+- [ ] All tests pass
+- [ ] Documentation has been updated
+- [ ] Screenshots attached
 
 After the PR is posted & before it merges:
-- [ ] The developer has tested their solution on a cluster by using the image produced by the PR to `main`
+- [ ] Code has been linted
+- [ ] No sensitive data in commits
+- [ ] Conflicts resolved
+- [ ] CI/CD pipeline passes
+- [ ] Required approvals received

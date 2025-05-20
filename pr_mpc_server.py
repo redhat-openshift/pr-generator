@@ -24,7 +24,6 @@ model = genai.GenerativeModel('gemini-2.0-flash-001')
 class PRRequest(BaseModel):
     repo_path: str
     jira_ticket: Optional[str] = None
-    short: bool = False
     num_commits: Optional[int] = None
     template_path: Optional[str] = None
     remote: str = "origin"
@@ -61,7 +60,7 @@ def get_commits(repo_path: str, num_commits: Optional[int] = None, remote: str =
         print(f"Error getting commits: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
-def generate_pr_description(commits: List[Dict[str, Any]], jira_ticket: Optional[str] = None, short: bool = False, template_path: Optional[str] = None) -> str:
+def generate_pr_description(commits: List[Dict[str, Any]], jira_ticket: Optional[str] = None, template_path: Optional[str] = None) -> str:
     """Generate PR description using Gemini."""
     try:
         # Prepare commit messages
@@ -75,80 +74,24 @@ def generate_pr_description(commits: List[Dict[str, Any]], jira_ticket: Optional
                 template = f.read()
 
         # Construct prompt (should still encourage bullets and [JIRA_TICKET] format)
-        prompt = """
-Generate a pull request (PR) description for the following changes. The PR description MUST include the Jira ticket (if provided) under the Description section. DO NOT include any commit diffs, commit logs, commit lists, or code snippets. Use the provided template if available. Be concise if the 'short' option is set.
-
-IMPORTANT:
-1. If a Jira ticket is provided, include it in the Description section using this exact format:
-[JIRA_TICKET]
-
-2. DO NOT include any of the following in your output:
-   - Commit diffs
-   - Commit logs
-   - Code snippets
-   - File changes
-   - Diff information
-   - Any technical details about the changes
-   - A "Commits" section
-   - Any commit information
-   - Any code blocks
-   - Any diff blocks
-   - Any markdown code blocks
-
-3. Summarize the main changes as a bulleted list under the Description section, appearing after the Jira ticket. Start the bulleted list with a phrase like "Key changes include:" or "This PR includes the following updates:".
-4. DO NOT output any commit list, commit log, or code diff.
-5. DO NOT output any markdown code blocks or diff blocks.
-6. DO NOT output any commit information or diff information.
-7. DO NOT output any technical details about the changes.
-8. DO NOT output any file changes or code snippets.
-9. DO NOT output any commit or diff information.
-10. DO NOT output any commit or diff blocks.
-"""
+        prompt = f"Generate Pull Request description with a brief title, Jira item (if provided), a list of commit changes, and testing steps."
+        prompt += f"\n1. IMPORTANT: After the PR title, add a description section with:\n"
         if jira_ticket: # Add Jira ticket to prompt for context, model should use [JIRA_TICKET]
-            prompt += f"\nJira ticket for context: {jira_ticket}\n"
-        if template:
-            prompt += f"\nUse the following template:\n{template}\n"
-        prompt += "\nSummarize the following commits:\n"
+            prompt += f"\n1. IMPORTANT: Jira {jira_ticket} in a new line.\n"
+        prompt += f"\n2. IMPORTANT: Then a list of concise bulleted items for each commit changes:\n"
         prompt += commit_text
-        if short:
-            prompt += "\n\nGenerate a very concise PR description with a brief title, a concise list of changes, and minimal testing steps."
-        else:
-            prompt += "\n\nGenerate a detailed PR description."
-        prompt += "\n\nIMPORTANT: Do NOT include any commit diffs, commit logs, commit lists, or code snippets. The Jira ticket must be included under the Description section. Only summarize the changes in natural language. Do not output any commit list, commit log, or code diff. Only output the PR description in natural language."
+        if template:
+            prompt += f"\n\nAdd more details according to the following template:\n{template}\n" + \
+                "3. If the template includes Testing sections, generate them according to the commits information of (2)." + \
+                "4. If the template includes 'Request review criteria' section with [ ] checkboxes, copy them as is."
+        prompt += "\n\nIMPORTANT: Do NOT include any markdown code blocks or ```text in your output."
 
         # Generate description
         response = model.generate_content(prompt)
         pr_description = response.text.strip()
         print('RAW MODEL OUTPUT:')
         print(pr_description)
-
-        # Server-side post-processing: ONLY remove template comments and basic unwanted patterns.
-        # NO server-side Jira manipulation.
-
-        lines = pr_description.split('\n')
-        cleaned_lines = []
-        template_comment_pattern = re.compile(r'^<!---.*-->$')
-        for line in lines:
-            if not template_comment_pattern.search(line.strip()):
-                cleaned_lines.append(line)
-        pr_description = '\n'.join(cleaned_lines)
-
-        # Main content filtering (commits, diffs, etc.) - keep this less aggressive
-        lines = pr_description.split('\n')
-        filtered_lines_final = []
-        pattern = re.compile(r'(commit[s]?|diff|```)', re.IGNORECASE) # No "changes:"
-        for line in lines:
-            if pattern.search(line):
-                break
-            filtered_lines_final.append(line)
-        filtered = '\n'.join(filtered_lines_final)
-
-        # Final cleanup for excessive newlines
-        filtered = re.sub(r'\n{3,}', '\n\n', filtered).strip()
-
-        print('FILTERED OUTPUT (Server):')
-        print(filtered) # This output will go to the client
-        return filtered
+        return pr_description
     except Exception as e:
         print(f"Error generating PR description: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -158,7 +101,7 @@ async def generate_pr(request: PRRequest):
     """Generate PR description endpoint."""
     try:
         commits = get_commits(request.repo_path, request.num_commits, request.remote)
-        description = generate_pr_description(commits, request.jira_ticket, request.short, request.template_path)
+        description = generate_pr_description(commits, request.jira_ticket, request.template_path)
         # Only return the model's generated description (with Jira ticket at the top if needed)
         return {"title": commits[-1]['subject'], "description": description}
     except Exception as e:
