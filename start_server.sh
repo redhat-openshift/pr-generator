@@ -22,5 +22,25 @@ else
     source venv/bin/activate
 fi
 
-# Start the server
-python main.py
+# Kill any existing process on the specified port if --kill-existing is passed
+if [[ "$*" == *"--kill-existing"* ]]; then
+    # Extract port number from arguments
+    PORT=$(echo "$*" | grep -o -- "--port [0-9]*" | awk '{print $2}')
+    if [ -z "$PORT" ]; then
+        PORT=8000  # Default port
+    fi
+    echo "Attempting to kill any existing process on port $PORT..."
+    # Kill all processes using the port
+    if lsof -ti :"$PORT" > /dev/null 2>&1; then
+        lsof -ti :"$PORT" | xargs kill -9
+        echo "Killed existing process on port $PORT"
+        # Add a small delay to ensure the port is released
+        sleep 1
+    else
+        echo "No existing process found on port $PORT"
+    fi
+fi
+
+# Start the server with all arguments
+# shellcheck disable=SC2068
+python pr_mpc_server.py "$@"
