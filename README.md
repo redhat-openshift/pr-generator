@@ -74,34 +74,58 @@ The client script can be used to generate PR descriptions from any git repositor
 python client.py <repository_path>
 
 # Specify number of commits to include
-python client.py <repository_path> JIRA-123 3
+python client.py <repository_path> --commits 3
 
 # Include a Jira ticket
-python client.py <repository_path> JIRA-123
+python client.py <repository_path> --jira JIRA-123
 
 # Use a different remote for comparison
 python client.py <repository_path> --remote origin
 
 # Write output to a file
-python client.py <repository_path> --output-file pr_description.md
+python client.py <repository_path> --output pr_description.md
 
 # Use custom server host and port
-python client.py <repository_path> --server-host 192.168.1.100 --server-port 8080
+python client.py <repository_path> --host 192.168.1.100 --port 8080
+
+# Use a custom PR template
+python client.py <repository_path> --template templates/PR_TEMPLATE.md
 
 # Combine options
-python client.py <repository_path> JIRA-123 3 --remote origin --output-file pr_description.md
+python client.py <repository_path> --jira JIRA-123 --commits 3 --remote origin --output pr_description.md --model gemini-2.0-flash-001 --template templates/PR_TEMPLATE.md
 ```
 
 ### Options
 
 - `<repository_path>`: Path to your git repository (required)
-- `<jira_ticket>`: Jira ticket number to include in the description
-- `<number>`: Number of commits to include (optional, defaults to all unmerged commits)
+- `--jira`: Jira ticket number to include in the description
+- `--commits`: Number of commits to include (optional, defaults to all unmerged commits)
 - `--remote`: Git remote to use for comparison (default: origin)
-- `--template`: Path to a custom PR template file
-- `--server-host`: MPC server host (default: localhost)
-- `--server-port`: MPC server port (default: 8000)
-- `--output-file`: Output file path to write the PR description (optional)
+- `--template`: Path to a custom PR template file (e.g., templates/PR_TEMPLATE.md)
+- `--host`: MPC server host (default: localhost)
+- `--port`: MPC server port (default: 8000)
+- `--output`: Output file path to write the PR description (optional)
+- `--model`: Gemini model to use (default: gemini-2.0-flash-001)
+
+### PR Template
+
+The tool comes with a default PR template that includes:
+- Description section
+- Testing details
+- Test impact analysis
+- Review criteria checklist
+- Post-merge checklist
+
+To use the template:
+```bash
+# Use the default template
+python client.py <repository_path> --template templates/PR_TEMPLATE.md
+
+# Use template with other options
+python client.py <repository_path> --jira JIRA-123 --template templates/PR_TEMPLATE.md --output pr_description.md
+```
+
+The template will be automatically integrated into the generated PR description, ensuring consistent formatting and required sections.
 
 ### Example Output
 ```

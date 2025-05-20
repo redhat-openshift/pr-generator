@@ -19,14 +19,16 @@ app = FastAPI()
 
 # Initialize Gemini model
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-model = genai.GenerativeModel('gemini-2.0-flash-001')
+DEFAULT_MODEL = 'gemini-2.0-flash-001'
+model = genai.GenerativeModel(DEFAULT_MODEL)
 
 class PRRequest(BaseModel):
     repo_path: str
-    jira_ticket: Optional[str] = None
-    num_commits: Optional[int] = None
+    jira: Optional[str] = None
+    commits: Optional[int] = None
     template_path: Optional[str] = None
     remote: str = "origin"
+    model: Optional[str] = DEFAULT_MODEL
 
 def get_commits(repo_path: str, num_commits: Optional[int] = None, remote: str = "origin") -> List[Dict[str, Any]]:
     """Get commits from the repository."""
@@ -60,9 +62,13 @@ def get_commits(repo_path: str, num_commits: Optional[int] = None, remote: str =
         print(f"Error getting commits: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
-def generate_pr_description(commits: List[Dict[str, Any]], jira_ticket: Optional[str] = None, template_path: Optional[str] = None) -> str:
+def generate_pr_description(commits: List[Dict[str, Any]], jira_ticket: Optional[str] = None, template_path: Optional[str] = None, model: Optional[genai.GenerativeModel] = None) -> str:
     """Generate PR description using Gemini."""
     try:
+        # Use provided model or default
+        if model is None:
+            model = genai.GenerativeModel(DEFAULT_MODEL)
+
         # Prepare commit messages
         commit_messages = [f"{commit['subject']}" for commit in commits]
         commit_text = "\n".join(commit_messages)
@@ -100,8 +106,10 @@ def generate_pr_description(commits: List[Dict[str, Any]], jira_ticket: Optional
 async def generate_pr(request: PRRequest):
     """Generate PR description endpoint."""
     try:
-        commits = get_commits(request.repo_path, request.num_commits, request.remote)
-        description = generate_pr_description(commits, request.jira_ticket, request.template_path)
+        # Initialize model with requested version
+        current_model = genai.GenerativeModel(request.model)
+        commits = get_commits(request.repo_path, request.commits, request.remote)
+        description = generate_pr_description(commits, request.jira, request.template_path, current_model)
         # Only return the model's generated description (with Jira ticket at the top if needed)
         return {"title": commits[-1]['subject'], "description": description}
     except Exception as e:
