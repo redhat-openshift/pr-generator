@@ -122,7 +122,6 @@ def main():
     parser.add_argument("--server-port", type=int, default=8000, help="MPC server port (default: 8000)")
     parser.add_argument("--server-host", default="localhost", help="MPC server host (default: localhost)")
     parser.add_argument('--output-file', help='Output file path to write the PR description (optional)')
-    parser.add_argument('--force', action='store_true', help='Force overwrite of output file if it exists')
 
     args = parser.parse_args()
 
@@ -142,10 +141,7 @@ def main():
         print(f"Error: '{args.repo_path}' is not a git repository")
         sys.exit(1)
 
-    # Check if output file exists and --force is not set
-    if args.output_file and os.path.exists(args.output_file) and not args.force:
-        print(f"Error: Output file '{args.output_file}' already exists. Use --force to overwrite.")
-        sys.exit(1)
+    # Always overwrite the output file if specified
 
     pr_description = generate_pr_description(args.repo_path, args.num_commits, args.jira_ticket, args.short, args.template, args.remote, args.server_host, args.server_port)
 

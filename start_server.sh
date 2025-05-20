@@ -22,8 +22,8 @@ else
     source venv/bin/activate
 fi
 
-# Kill any existing process on the specified port if --kill-existing is passed
-if [[ "$*" == *"--kill-existing"* ]]; then
+# Kill any existing process on the specified port if --force is passed
+if [[ "$*" == *"--force"* ]]; then
     # Extract port number from arguments
     PORT=$(echo "$*" | grep -o -- "--port [0-9]*" | awk '{print $2}')
     if [ -z "$PORT" ]; then

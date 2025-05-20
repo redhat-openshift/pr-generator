@@ -19,7 +19,7 @@ app = FastAPI()
 
 # Initialize Gemini model
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('gemini-2.0-flash-001')
 
 class PRRequest(BaseModel):
     repo_path: str
@@ -125,6 +125,17 @@ IMPORTANT:
         # Replace the Jira ticket placeholder with the actual ticket
         if jira_ticket:
             pr_description = pr_description.replace(f'[{jira_ticket}]', f'Jira ticket: {jira_ticket}')
+            # Ensure Jira ticket appears only once
+            lines = pr_description.split('\n')
+            filtered_lines = []
+            jira_added = False
+            for line in lines:
+                if line.strip().lower().startswith('jira ticket:') and not jira_added:
+                    filtered_lines.append(line)
+                    jira_added = True
+                elif not line.strip().lower().startswith('jira ticket:'):
+                    filtered_lines.append(line)
+            pr_description = '\n'.join(filtered_lines)
 
         # Remove any diff information, Commits section, and markdown code blocks
         lines = pr_description.split('\n')

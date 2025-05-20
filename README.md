@@ -104,7 +104,6 @@ python client.py <repository_path> JIRA-123 3 --short --remote origin --output-f
 - `--server-host`: MPC server host (default: localhost)
 - `--server-port`: MPC server port (default: 8000)
 - `--output-file`: Output file path to write the PR description (optional)
-- `--force`: Force overwrite of output file if it exists
 
 ## Example Output
 
