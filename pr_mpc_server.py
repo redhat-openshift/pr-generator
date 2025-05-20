@@ -166,9 +166,32 @@ async def generate_pr(request: PRRequest):
 
 if __name__ == "__main__":
     import argparse
+    import socket
+    import subprocess
 
     import uvicorn
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--force", action="store_true", help="Force server to start by killing any process using the port")
     args = parser.parse_args()
+
+    if args.force:
+        try:
+            # Try to find process using the port
+            result = subprocess.run(
+                ['lsof', '-i', f':{args.port}'],
+                capture_output=True,
+                text=True
+            )
+            if result.stdout:
+                # Get the PID from the output
+                lines = result.stdout.splitlines()
+                if len(lines) > 1:  # Skip header line
+                    pid = lines[1].split()[1]
+                    print(f"Killing process {pid} using port {args.port}")
+                    subprocess.run(['kill', '-9', pid])
+                    print(f"Process killed. Starting server on port {args.port}")
+        except Exception as e:
+            print(f"Warning: Could not kill process on port {args.port}: {str(e)}")
+
     uvicorn.run(app, host="0.0.0.0", port=args.port)

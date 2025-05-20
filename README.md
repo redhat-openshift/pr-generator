@@ -49,6 +49,20 @@ echo "GOOGLE_API_KEY=your_api_key_here" > .env
 
 The server will start on `http://localhost:8000`.
 
+You can also start the server with custom options:
+```bash
+# Start with custom port
+python pr_mpc_server.py --port 8080
+
+# Force start even if port is in use
+python pr_mpc_server.py --port 8080 --force
+```
+
+### Server Options
+
+- `--port`: Port number to run the server on (default: 8000)
+- `--force`: Force server to start by killing any process using the specified port (requires lsof)
+
 ### Using the Client
 
 The client script can be used to generate PR descriptions from any git repository:
@@ -66,8 +80,17 @@ python client.py <repository_path> JIRA-123 3
 # Include a Jira ticket
 python client.py <repository_path> JIRA-123
 
+# Use a different remote for comparison
+python client.py <repository_path> --remote origin
+
+# Write output to a file
+python client.py <repository_path> --output-file pr_description.md
+
+# Use custom server host and port
+python client.py <repository_path> --server-host 192.168.1.100 --server-port 8080
+
 # Combine options
-python client.py <repository_path> JIRA-123 3 --short
+python client.py <repository_path> JIRA-123 3 --short --remote origin --output-file pr_description.md
 ```
 
 ### Options
@@ -76,6 +99,12 @@ python client.py <repository_path> JIRA-123 3 --short
 - `--short`: Generate a concise description
 - `<jira_ticket>`: Jira ticket number to include in the description
 - `<number>`: Number of commits to include (optional, defaults to all unmerged commits)
+- `--remote`: Git remote to use for comparison (default: origin)
+- `--template`: Path to a custom PR template file
+- `--server-host`: MPC server host (default: localhost)
+- `--server-port`: MPC server port (default: 8000)
+- `--output-file`: Output file path to write the PR description (optional)
+- `--force`: Force overwrite of output file if it exists
 
 ## Example Output
 
