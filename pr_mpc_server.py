@@ -69,9 +69,33 @@ def generate_pr_description(commits: List[Dict[str, Any]], jira_ticket: Optional
         if model is None:
             model = genai.GenerativeModel(DEFAULT_MODEL)
 
-        # Prepare commit messages
-        commit_messages = [f"{commit['subject']}" for commit in commits]
-        commit_text = "\n".join(commit_messages)
+        # Remove common prefix from commit messages only if it appears multiple times
+        cleaned_commits = []
+        prefix_count = {}
+        for commit in commits:
+            subject = commit['subject']
+            if ":" in subject:
+                prefix = subject.split(":")[0].strip()
+                prefix_count[prefix] = prefix_count.get(prefix, 0) + 1
+
+        # Only remove prefix if it appears more than once
+        common_prefix = None
+        for prefix, count in prefix_count.items():
+            if count > 1:
+                common_prefix = prefix
+                break
+
+        # Process commits with the common prefix
+        for commit in commits:
+            subject = commit['subject']
+            if common_prefix and subject.startswith(f"{common_prefix}:"):
+                # Remove the prefix and colon from the message
+                cleaned_commits.append(subject.split(":", 1)[1].strip())
+            else:
+                cleaned_commits.append(subject)
+
+        # Format commits for the prompt
+        commit_text = "\n".join(cleaned_commits)
 
         # Load template if provided
         template = ""
@@ -91,6 +115,8 @@ def generate_pr_description(commits: List[Dict[str, Any]], jira_ticket: Optional
                 "3. If the template includes Testing sections, generate them according to the commits information of (2)." + \
                 "4. If the template includes 'Request review criteria' section with [ ] checkboxes, copy them as is."
         prompt += "\n\nIMPORTANT: Do NOT include any markdown code blocks or ```text in your output."
+        if common_prefix:
+            prompt += f"\nIMPORTANT: The title MUST include \"{common_prefix}\" since it was removed from individual commit messages."
 
         # Generate description
         response = model.generate_content(prompt)
