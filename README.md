@@ -71,28 +71,28 @@ The client script can be used to generate PR descriptions from any git repositor
 
 ```bash
 # Basic usage - shows all unmerged commits
-python client.py <repository_path>
+python gen_pr.py <repository_path>
 
 # Specify number of commits to include
-python client.py <repository_path> --commits 3
+python gen_pr.py <repository_path> --commits 3
 
 # Include a Jira ticket
-python client.py <repository_path> --jira JIRA-123
+python gen_pr.py <repository_path> --jira JIRA-123
 
 # Use a different remote for comparison
-python client.py <repository_path> --remote origin
+python gen_pr.py <repository_path> --remote origin
 
 # Write output to a file
-python client.py <repository_path> --output pr_description.md
+python gen_pr.py <repository_path> --output pr_description.md
 
 # Use custom server host and port
-python client.py <repository_path> --host 192.168.1.100 --port 8080
+python gen_pr.py <repository_path> --host 192.168.1.100 --port 8080
 
 # Use a custom PR template
-python client.py <repository_path> --template templates/PR_TEMPLATE.md
+python gen_pr.py <repository_path> --template templates/PR_TEMPLATE.md
 
 # Combine options
-python client.py <repository_path> --jira JIRA-123 --commits 3 --remote origin --output pr_description.md --model gemini-2.0-flash-001 --template templates/PR_TEMPLATE.md
+python gen_pr.py <repository_path> --jira JIRA-123 --commits 3 --remote origin --output pr_description.md --model gemini-2.0-flash-001 --template templates/PR_TEMPLATE.md
 ```
 
 ### Options
@@ -119,10 +119,10 @@ The tool comes with a default PR template that includes:
 To use the template:
 ```bash
 # Use the default template
-python client.py <repository_path> --template templates/PR_TEMPLATE.md
+python gen_pr.py <repository_path> --template templates/PR_TEMPLATE.md
 
 # Use template with other options
-python client.py <repository_path> --jira JIRA-123 --template templates/PR_TEMPLATE.md --output pr_description.md
+python gen_pr.py <repository_path> --jira JIRA-123 --template templates/PR_TEMPLATE.md --output pr_description.md
 ```
 
 The template will be automatically integrated into the generated PR description, ensuring consistent formatting and required sections.
@@ -206,7 +206,5 @@ The tool supports custom PR templates that can be automatically integrated into 
 1. Create a template file with your desired sections
 2. Use the `--template` option when running the client:
 ```bash
-python client.py <repository_path> --template path/to/template.md
+python gen_pr.py <repository_path> --template path/to/template.md
 ```
-
-The template will be automatically appended to the generated description if its sections are not already present.
