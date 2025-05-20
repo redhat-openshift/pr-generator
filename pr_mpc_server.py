@@ -74,9 +74,9 @@ def generate_pr_description(commits: List[Dict[str, Any]], jira_ticket: Optional
             with open(template_path, 'r') as f:
                 template = f.read()
 
-        # Construct prompt
+        # Construct prompt (should still encourage bullets and [JIRA_TICKET] format)
         prompt = """
-Generate a pull request (PR) description for the following changes. The PR description MUST include the Jira ticket (if provided) under the Description section. DO NOT include any commit diffs, commit logs, commit lists, or code snippets. Only summarize the changes in natural language. Use the provided template if available. Be concise if the 'short' option is set.
+Generate a pull request (PR) description for the following changes. The PR description MUST include the Jira ticket (if provided) under the Description section. DO NOT include any commit diffs, commit logs, commit lists, or code snippets. Use the provided template if available. Be concise if the 'short' option is set.
 
 IMPORTANT:
 1. If a Jira ticket is provided, include it in the Description section using this exact format:
@@ -95,7 +95,7 @@ IMPORTANT:
    - Any diff blocks
    - Any markdown code blocks
 
-3. Only provide a natural language summary of the changes.
+3. Summarize the main changes as a bulleted list under the Description section, appearing after the Jira ticket. Start the bulleted list with a phrase like "Key changes include:" or "This PR includes the following updates:".
 4. DO NOT output any commit list, commit log, or code diff.
 5. DO NOT output any markdown code blocks or diff blocks.
 6. DO NOT output any commit information or diff information.
@@ -104,8 +104,8 @@ IMPORTANT:
 9. DO NOT output any commit or diff information.
 10. DO NOT output any commit or diff blocks.
 """
-        if jira_ticket:
-            prompt += f"\nJira ticket: {jira_ticket}\n"
+        if jira_ticket: # Add Jira ticket to prompt for context, model should use [JIRA_TICKET]
+            prompt += f"\nJira ticket for context: {jira_ticket}\n"
         if template:
             prompt += f"\nUse the following template:\n{template}\n"
         prompt += "\nSummarize the following commits:\n"
@@ -122,43 +122,32 @@ IMPORTANT:
         print('RAW MODEL OUTPUT:')
         print(pr_description)
 
-        # Replace the Jira ticket placeholder with the actual ticket
-        if jira_ticket:
-            pr_description = pr_description.replace(f'[{jira_ticket}]', f'Jira ticket: {jira_ticket}')
-            # Ensure Jira ticket appears only once
-            lines = pr_description.split('\n')
-            filtered_lines = []
-            jira_added = False
-            for line in lines:
-                if line.strip().lower().startswith('jira ticket:') and not jira_added:
-                    filtered_lines.append(line)
-                    jira_added = True
-                elif not line.strip().lower().startswith('jira ticket:'):
-                    filtered_lines.append(line)
-            pr_description = '\n'.join(filtered_lines)
+        # Server-side post-processing: ONLY remove template comments and basic unwanted patterns.
+        # NO server-side Jira manipulation.
 
-        # Remove any diff information, Commits section, and markdown code blocks
         lines = pr_description.split('\n')
-        filtered_lines = []
-        # Aggressive regex to match keywords and code block starts
-        pattern = re.compile(r'(commit[s]?|diff|changes:|```)', re.IGNORECASE)
+        cleaned_lines = []
+        template_comment_pattern = re.compile(r'^<!---.*-->$')
+        for line in lines:
+            if not template_comment_pattern.search(line.strip()):
+                cleaned_lines.append(line)
+        pr_description = '\n'.join(cleaned_lines)
+
+        # Main content filtering (commits, diffs, etc.) - keep this less aggressive
+        lines = pr_description.split('\n')
+        filtered_lines_final = []
+        pattern = re.compile(r'(commit[s]?|diff|```)', re.IGNORECASE) # No "changes:"
         for line in lines:
             if pattern.search(line):
-                break  # Stop processing further lines entirely
-            filtered_lines.append(line)
-        # Remove any trailing Jira ticket lines
-        while filtered_lines and filtered_lines[-1].strip().lower().startswith('jira ticket:'):
-            filtered_lines.pop()
-        filtered = '\n'.join(filtered_lines)
-
-        # Failsafe: scan again for any remaining unwanted lines and cut everything after
-        lines2 = filtered.split('\n')
-        for i, line in enumerate(lines2):
-            if pattern.search(line):
-                filtered = '\n'.join(lines2[:i])
                 break
-        print('FILTERED OUTPUT:')
-        print(filtered)
+            filtered_lines_final.append(line)
+        filtered = '\n'.join(filtered_lines_final)
+
+        # Final cleanup for excessive newlines
+        filtered = re.sub(r'\n{3,}', '\n\n', filtered).strip()
+
+        print('FILTERED OUTPUT (Server):')
+        print(filtered) # This output will go to the client
         return filtered
     except Exception as e:
         print(f"Error generating PR description: {str(e)}")

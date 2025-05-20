@@ -58,28 +58,60 @@ def generate_pr_description(repo_path: str, num_commits: Optional[int] = None, j
         sys.exit(1)
 
 def write_pr_description(output_file: str, description: str, jira_ticket: Optional[str] = None, template_path: Optional[str] = None) -> None:
-    """Write PR description to file, ensuring Jira ticket is present after filtering and template data is included."""
+    """Write PR description to file. Client ensures final Jira ticket format and presence."""
+
+    processed_description = description # Start with what the server sent
+
     if jira_ticket:
-        # Split the description into lines
-        lines = description.splitlines()
-        # Find the Description section
-        desc_idx = None
+        jira_placeholder_from_model = f'[{jira_ticket}]' # e.g. [TEST-123]
+        final_jira_line = f'Jira ticket: {jira_ticket}' # e.g. Jira ticket: TEST-123
+
+        lines = processed_description.splitlines()
+        new_lines = []
+        jira_handled = False
+        desc_idx = -1
+
+        # Find first ## Description index
         for i, line in enumerate(lines):
             if line.strip().lower().startswith('## description'):
                 desc_idx = i
                 break
-        if desc_idx is not None:
-            # Insert Jira ticket right after the Description header
-            new_lines = lines[:desc_idx + 1] + [f'Jira ticket: {jira_ticket}'] + lines[desc_idx + 1:]
-            description = '\n'.join(new_lines)
-        else:
-            # If no Description section found, add at the top
-            description = f'Jira ticket: {jira_ticket}\n\n' + description
-    with open(output_file, 'w') as f:
-        f.write(description)
-    clean_pr_description_file(output_file, jira_ticket, template_path)
 
-def clean_pr_description_file(output_file, jira_ticket=None, template_path=None):
+        # Process lines: replace placeholder or remove other forms, ensure only one final Jira line
+        for i, line in enumerate(lines):
+            if jira_placeholder_from_model in line:
+                if not jira_handled:
+                    new_lines.append(line.replace(jira_placeholder_from_model, final_jira_line))
+                    jira_handled = True
+                # else skip if it's a duplicate placeholder
+            elif final_jira_line in line: # If model somehow already produced the final format
+                if not jira_handled:
+                    new_lines.append(line) # Keep it
+                    jira_handled = True
+                # else skip if it's a duplicate final format
+            else:
+                new_lines.append(line)
+
+        if not jira_handled:
+            # Jira ticket was not found in any format, add it.
+            if desc_idx != -1:
+                # Insert after the ## Description line
+                new_lines.insert(desc_idx + 1, final_jira_line)
+            else:
+                # No ## Description, add to the top
+                new_lines.insert(0, final_jira_line)
+
+        processed_description = '\n'.join(new_lines)
+
+    with open(output_file, 'w') as f:
+        f.write(processed_description)
+
+    # Keep the existing clean_pr_description_file for template and other cleanup,
+    # but it no longer needs to handle Jira ticket presence.
+    clean_pr_description_file(output_file, template_path)
+
+def clean_pr_description_file(output_file, template_path=None):
+    # This function no longer needs to worry about jira_ticket
     pattern = re.compile(r'(commit[s]?|diff|changes:|```)', re.IGNORECASE)
     with open(output_file, 'r') as f:
         lines = f.readlines()
@@ -90,15 +122,6 @@ def clean_pr_description_file(output_file, jira_ticket=None, template_path=None)
     # Remove trailing blank lines
     while lines and lines[-1].strip() == '':
         lines.pop()
-    # Ensure Jira ticket is present after filtering
-    if jira_ticket and not any(f'Jira ticket: {jira_ticket}' in l for l in lines):
-        # Insert after Description header if present, else at top
-        for i, line in enumerate(lines):
-            if line.strip().lower().startswith('## description'):
-                lines = lines[:i+1] + [f'Jira ticket: {jira_ticket}\n'] + lines[i+1:]
-                break
-        else:
-            lines = [f'Jira ticket: {jira_ticket}\n'] + ['\n'] + lines
     # Ensure template data is present
     if template_path and os.path.exists(template_path):
         with open(template_path, 'r') as f:
