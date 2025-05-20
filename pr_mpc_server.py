@@ -31,7 +31,7 @@ class PRRequest(BaseModel):
     model: Optional[str] = DEFAULT_MODEL
 
 def get_commits(repo_path: str, num_commits: Optional[int] = None, remote: str = "origin") -> List[Dict[str, Any]]:
-    """Get commits from the repository."""
+    """Get commits from the repository that haven't been pushed to remote."""
     try:
         # Get current branch
         result = subprocess.run(
@@ -43,8 +43,11 @@ def get_commits(repo_path: str, num_commits: Optional[int] = None, remote: str =
         current_branch = result.stdout.strip()
         print(f"Current branch: {current_branch}")
 
-        # Get commits
-        cmd = ['git', 'log', '--pretty=format:%H|%s|%b', '--reverse']
+        # First, fetch the latest changes from remote
+        subprocess.run(['git', 'fetch', remote], cwd=repo_path, capture_output=True)
+
+        # Get commits that haven't been merged into the remote branch
+        cmd = ['git', 'log', '--pretty=format:%H|%s|%b', '--reverse', f'{remote}/{current_branch}..HEAD', '--no-merges']
         if num_commits:
             cmd.append(f'-n{num_commits}')
         result = subprocess.run(cmd, cwd=repo_path, capture_output=True, text=True)
